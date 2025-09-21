@@ -67,7 +67,7 @@ class GeneSearchCriteria(BaseModel):
     )
     sort_direction: Optional[str] = Field(
         default="asc",
-        regex="^(asc|desc)$",
+        pattern="^(asc|desc)$",
         description="Sort direction: 'asc' or 'desc'"
     )
 
