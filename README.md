@@ -93,7 +93,7 @@ SENDGRID_EMAIL=noreply@yourdomain.com
 
 1. **Clone the repository**
    ```bash
-   git clone <repository-url>
+   git clone https://github.com/JhonierSerna14/Frontend-VitiGenLabs.git
    cd vitigenlabs-backend
    ```
 
@@ -253,43 +253,9 @@ curl -X GET "http://localhost:8000/api/v1/search/?search=PASS&page=1&per_page=25
 - **Queue Health**: RabbitMQ connection status
 - **Service Status**: Overall application health endpoint
 
-## Contributing
-
-1. **Fork the repository**
-2. **Create a feature branch**: `git checkout -b feature/amazing-feature`
-3. **Make your changes**: Follow the existing code style and patterns
-4. **Add tests**: Ensure new functionality is tested
-5. **Commit changes**: `git commit -m 'Add amazing feature'`
-6. **Push to branch**: `git push origin feature/amazing-feature`
-7. **Open a Pull Request**: Describe your changes and their impact
-
-### Development Guidelines
-- Follow PEP 8 style guide
-- Add type hints to all functions
-- Include docstrings for all public methods
-- Write unit tests for new functionality
-- Update documentation as needed
-
-## License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## Support
-
-For support, questions, or contributions:
-- **Issues**: Use GitHub Issues for bug reports and feature requests
-- **Discussions**: Use GitHub Discussions for questions and community interaction
-- **Email**: Contact the development team at dev@vitigenlabs.com
-
-## Changelog
-
-### Version 1.0.0
-- Initial release with core functionality
-- VCF file processing and gene search
-- User authentication and security
-- Email notification system
-- Comprehensive API documentation
-
----
-
 **VitiGenLabs** - Advancing grape genetics research through modern technology.
+
+
+⚡ Desarrollado con Python y ❤️
+
+🌟 ¡Dale una estrella si te gusta el proyecto! ⭐
