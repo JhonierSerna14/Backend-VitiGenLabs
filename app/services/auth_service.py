@@ -121,12 +121,12 @@ class AuthService:
 
     def generate_security_key(self) -> str:
         """
-        Generate a random security key.
+        Generate a random 6-digit security key.
         
         Returns:
-            str: A URL-safe random security key
+            str: A 6-digit numeric security key
         """
-        return secrets.token_urlsafe(16)
+        return f"{secrets.randbelow(900000) + 100000:06d}"
 
     async def create_user(self, user: UserCreate) -> UserResponse:
         """
@@ -197,24 +197,15 @@ class AuthService:
                 logger.warning(f"Authentication failed: invalid password - {email}")
                 return None
 
-            # Generate new security key on login
-            new_security_key = self.generate_security_key()
-            expires_at = datetime.now(tz=timezone.utc) + timedelta(hours=24)
-
-            # Update user with new security key
+            # Solo actualizar last_login sin afectar la verificación
             await self.users_collection.update_one(
                 {"email": email},
                 {
                     "$set": {
-                        "security_key": new_security_key,
-                        "security_key_expires": expires_at,
                         "last_login": datetime.now(tz=timezone.utc)
                     }
                 },
             )
-
-            # Send security key email
-            self.publish_security_key_email(email, new_security_key)
             
             logger.info(f"User authenticated successfully: {email}")
             return user
@@ -321,18 +312,34 @@ class AuthService:
             if user.security_key_expires < datetime.now(tz=timezone.utc):
                 raise ValueError("Security key has expired")
 
-            # Clear the security key after successful verification
-            await self.users_collection.update_one(
+            # Mark user as verified and clear security key
+            result = await self.users_collection.update_one(
                 {"email": email},
                 {
                     "$set": {
-                        "security_key": None,
-                        "security_key_expires": None,
+                        "is_verified": True,
+                        "last_login": datetime.now(tz=timezone.utc)
+                    },
+                    "$unset": {
+                        "security_key": "",
+                        "security_key_expires": ""
                     }
-                },
+                }
             )
 
-            logger.info(f"Security key verified successfully for user: {email}")
+            # Verify the update was successful
+            if result.modified_count == 0:
+                logger.error(f"Failed to update user verification status for: {email}")
+                raise ValueError("Failed to update user verification status")
+
+            logger.info(f"Security key verified successfully for user: {email}, modified: {result.modified_count}")
+            
+            # Double-check the user was updated
+            updated_user = await self.get_user_by_email(email)
+            if updated_user and not updated_user.is_verified:
+                logger.error(f"User verification status not updated in database for: {email}")
+                raise ValueError("Database update failed")
+            
             return True
             
         except ValueError:
