@@ -11,8 +11,9 @@ Environment Variables Required:
 - RABBITMQ_HOST: RabbitMQ server host
 - RABBITMQ_PORT: RabbitMQ server port
 - UPLOAD_FOLDER: Directory for file uploads
-- SENDGRID: SendGrid API key
-- SENDGRID_EMAIL: SendGrid sender email
+- BREVO_API_KEY: Brevo API key for email service
+- BREVO_SENDER_EMAIL: Brevo sender email address
+- BREVO_SENDER_NAME: Brevo sender name
 """
 
 import os
@@ -68,12 +69,9 @@ class Settings(BaseSettings):
     )
     
     # Email Configuration
-    SENDGRID_API_KEY: str = Field(..., alias="SENDGRID", description="SendGrid API key")
-    SENDGRID_EMAIL: str = Field(..., description="SendGrid sender email address")
-    SENDGRID_TEMPLATE_ID: str = Field(
-        default="d-9fce5a2cd717486995e8cc8c3249178b",
-        description="SendGrid template ID for security key emails"
-    )
+    BREVO_API_KEY: str = Field(..., description="Brevo API key")
+    BREVO_SENDER_EMAIL: str = Field(..., description="Brevo sender email address")
+    BREVO_SENDER_NAME: str = Field(..., description="Brevo sender name")
     
     # Performance Configuration
     WORKER_PROCESSES: int = Field(
