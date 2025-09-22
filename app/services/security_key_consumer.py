@@ -2,7 +2,7 @@
 Security Key Email Consumer Module
 
 This module handles RabbitMQ message consumption for sending security key emails
-via SendGrid. It processes authentication and verification email notifications.
+via Brevo. It processes authentication and verification email notifications.
 """
 
 import json
@@ -10,11 +10,10 @@ import logging
 from typing import Dict, Any
 
 import pika
-from sendgrid import SendGridAPIClient
-from sendgrid.helpers.mail import Mail
 from pika.exceptions import AMQPConnectionError, AMQPChannelError
 
 from app.config import settings
+from app.services.email_service import send_security_key_email
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -24,47 +23,32 @@ logger = logging.getLogger(__name__)
 logging.getLogger("pika").setLevel(logging.WARNING)
 
 
-def send_security_key_email(email: str, code: str) -> bool:
+def send_security_key_email_direct(email: str, code: str) -> bool:
     """
-    Send security key email using SendGrid dynamic template.
-    
+    Send security key email using the email service.
+
     Args:
         email: Recipient email address
         code: Security key/code to send
-        
+
     Returns:
         bool: True if email sent successfully, False otherwise
     """
     try:
         logger.info(f"Sending security key email to: {email}")
         
-        # Create mail object with dynamic template
-        message = Mail(
-            from_email=settings.SENDGRID_EMAIL,
-            to_emails=email,
-        )
+        # Use the email service to send the security key email
+        success = send_security_key_email(email, code, "Usuario")
         
-        # Set dynamic template
-        message.template_id = settings.SENDGRID_TEMPLATE_ID
-        message.dynamic_template_data = {
-            "code": code,
-            "app_name": "VitiGenLabs",
-            "timestamp": "now"
-        }
-        
-        # Send email via SendGrid
-        sg = SendGridAPIClient(settings.SENDGRID_API_KEY)
-        response = sg.send(message)
-        
-        if response.status_code in [200, 202]:
-            logger.info(f"Security key email sent successfully to: {email}")
-            return True
+        if success:
+            logger.info(f"Email sent successfully to {email}.")
         else:
-            logger.error(f"SendGrid returned status code: {response.status_code}")
-            return False
+            logger.error(f"Failed to send email to {email}")
             
+        return success
+
     except Exception as e:
-        logger.error(f"Error sending security key email to {email}: {e}")
+        logger.error(f"Error sending email to {email}: {e}")
         return False
 
 
@@ -90,7 +74,7 @@ def process_message(ch, method, properties, body: bytes) -> None:
             return
         
         # Send email
-        success = send_security_key_email(email, security_key)
+        success = send_security_key_email_direct(email, security_key)
         
         if success:
             ch.basic_ack(delivery_tag=method.delivery_tag)
