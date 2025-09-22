@@ -91,8 +91,8 @@ class GeneBase(BaseModel):
     chromosome: str = Field(
         ...,
         min_length=1,
-        max_length=10,
-        description="Chromosome identifier (e.g., '1', 'X', 'Y')"
+        max_length=100,
+        description="Chromosome identifier (supports both standard and extended formats like 'VITVvi_vCabSauv08_v1.1.hapl.chr07')"
     )
     position: int = Field(
         ...,
@@ -147,18 +147,25 @@ class GeneBase(BaseModel):
     @field_validator("chromosome")
     @classmethod
     def validate_chromosome(cls, v: str) -> str:
-        """Validate chromosome identifier format."""
-        # Remove 'chr' prefix if present and normalize
-        if v.lower().startswith('chr'):
+        """
+        Validate chromosome identifier format.
+        
+        Supports both standard human chromosome identifiers (1-22, X, Y, MT)
+        and extended plant genome identifiers (e.g., VITVvi_vCabSauv08_v1.1.hapl.chr07).
+        """
+        # Remove 'chr' prefix if present and normalize for standard chromosomes
+        original_value = v
+        if v.lower().startswith('chr') and len(v) <= 5:  # Only for short chromosome names
             v = v[3:]
         
-        # Validate chromosome identifier
-        valid_chromosomes = [str(i) for i in range(1, 23)] + ['X', 'Y', 'MT', 'M']
-        if v.upper() not in [c.upper() for c in valid_chromosomes]:
-            # Allow any string for flexibility, but log a warning
-            pass
+        # Check if it's a standard human chromosome
+        standard_chromosomes = [str(i) for i in range(1, 23)] + ['X', 'Y', 'MT', 'M']
+        if v.upper() in [c.upper() for c in standard_chromosomes]:
+            return v.upper()
         
-        return v.upper()
+        # For non-standard chromosomes (like plant genomes), return as-is
+        # This allows for complex identifiers like 'VITVvi_vCabSauv08_v1.1.hapl.chr07'
+        return original_value
 
 
 class GeneCreate(GeneBase):
