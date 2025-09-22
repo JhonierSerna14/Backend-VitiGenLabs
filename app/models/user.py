@@ -102,6 +102,10 @@ class UserInDB(UserBase):
         default=None,
         description="Expiration timestamp for the security key"
     )
+    is_verified: bool = Field(
+        default=False,
+        description="Whether the user has verified their security key"
+    )
 
 
 class UserResponse(UserBase):
