@@ -8,7 +8,7 @@ A high-performance REST API backend for genetic analysis of grape varieties, bui
 - **VCF File Processing**: Upload and parse large VCF files with efficient memory management
 - **Gene Search & Filtering**: Advanced search capabilities with pagination and real-time filtering
 - **User Authentication**: JWT-based authentication with security key verification
-- **Email Notifications**: Automated security key delivery via SendGrid integration
+- **Email Notifications**: Automated security key delivery via Brevo integration
 - **Asynchronous Processing**: High-performance async operations for scalability
 
 ### Technical Highlights
@@ -29,7 +29,7 @@ A high-performance REST API backend for genetic analysis of grape varieties, bui
          │                                              │
          ▼                                              ▼
 ┌─────────────────┐                          ┌─────────────────┐
-│   File Upload   │                          │   SendGrid      │
+│   File Upload   │                          │   Brevo         │
 │   Processing    │                          │   Email Service │
 └─────────────────┘                          └─────────────────┘
 ```
@@ -58,7 +58,7 @@ A high-performance REST API backend for genetic analysis of grape varieties, bui
 - Python 3.9 or higher
 - MongoDB 4.4 or higher
 - RabbitMQ 3.8 or higher
-- SendGrid account (for email notifications)
+- Brevo account (for email notifications)
 
 ### Environment Configuration
 
@@ -84,9 +84,10 @@ RABBITMQ_PASSWORD=guest
 UPLOAD_FOLDER=./uploads
 MAX_FILE_SIZE=5368709120
 
-# Email Configuration (SendGrid)
-SENDGRID=your-sendgrid-api-key-here
-SENDGRID_EMAIL=noreply@yourdomain.com
+# Email Configuration (Brevo)
+BREVO_API_KEY=your-brevo-api-key-here
+BREVO_SENDER_EMAIL=noreply@yourdomain.com
+BREVO_SENDER_NAME=Your Name
 ```
 
 ### Installation Steps
