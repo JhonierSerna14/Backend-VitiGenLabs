@@ -53,7 +53,8 @@ class GeneBatchUpload(BaseModel):
 
 
 class GeneSearchResult(BaseModel):
-    total_results: int
+    total: int
     page: int
     per_page: int
-    results: List[GeneCreate]
+    total_pages: int
+    genes: List[Dict[str, Any]]
