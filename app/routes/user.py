@@ -25,7 +25,7 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends()):
     """
     Inicio de sesión de usuario
     - Autentica credenciales
-    - Verifica que el código de seguridad haya sido verificado
+    - Verifica que el email haya sido verificado (solo una vez)
     - Genera token de acceso
     """
     user = await authenticate_user(form_data.username, form_data.password)
@@ -36,42 +36,13 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends()):
             headers={"WWW-Authenticate": "Bearer"},
         )
     
-    # Verificar que el usuario haya verificado su código de seguridad
+    # Verificar que el usuario haya verificado su email (solo la primera vez)
     user_data = await auth_service.get_user_by_email(user.email)
     if not user_data or not getattr(user_data, 'is_verified', False):
-        # Solo generar nuevo código si no tiene uno válido
-        needs_new_code = True
-        if hasattr(user_data, 'security_key') and user_data.security_key:
-            # Verificar si el código existente sigue válido
-            if hasattr(user_data, 'security_key_expires') and user_data.security_key_expires:
-                expires = user_data.security_key_expires
-                if expires.tzinfo is None:
-                    expires = expires.replace(tzinfo=timezone.utc)
-                if expires > datetime.now(tz=timezone.utc):
-                    needs_new_code = False
-        
-        if needs_new_code:
-            # Generar nuevo código solo si es necesario
-            new_security_key = auth_service.generate_security_key()
-            expires_at = datetime.now(tz=timezone.utc) + timedelta(hours=24)
-            
-            await auth_service.users_collection.update_one(
-                {"email": user.email},
-                {
-                    "$set": {
-                        "security_key": new_security_key,
-                        "security_key_expires": expires_at,
-                        "is_verified": False
-                    }
-                }
-            )
-            
-            # Enviar nuevo código por email
-            auth_service.publish_security_key_email(user.email, new_security_key)
-        
+        # Solo pedir verificación si el usuario nunca ha verificado su email
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Debe verificar el código de seguridad enviado a su email antes de hacer login",
+            detail="Debe verificar su email antes de hacer login. Revise su bandeja de entrada.",
         )
     
     access_token = create_access_token(data={"sub": user.email})
