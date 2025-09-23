@@ -47,6 +47,7 @@ class FileProcessorService:
     async def process_file(
         self,
         file: UploadFile,
+        user_email: str = None,
     ):
         """
         Main method to process an uploaded file.
@@ -79,14 +80,20 @@ class FileProcessorService:
                 )  # Procesar cada chunk en la nueva colección
 
             # Guardar información del archivo en la colección de archivos subidos
-            await self.database.uploaded_files.insert_one(
-                {
-                    "file_path": file_path,
-                    "collection_name": collection_name,
-                    "total_genes": total_genes,
-                    "upload_time": datetime.now(),
-                }
-            )
+            file_size = os.path.getsize(file_path) if os.path.exists(file_path) else None
+            file_record = {
+                "file_path": file_path,
+                "collection_name": collection_name,
+                "original_filename": file.filename,
+                "total_genes": total_genes,
+                "upload_date": datetime.now(),
+                "file_size": file_size,
+            }
+            
+            if user_email:
+                file_record["user_email"] = user_email
+                
+            await self.database.uploaded_files.insert_one(file_record)
 
             # Calculate processing time and speed
             total_time = (datetime.now() - start_time).total_seconds() / 60
