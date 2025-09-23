@@ -5,8 +5,11 @@ from fastapi import (
     HTTPException,
     Depends,
 )
+from typing import List
 from app.services.file_processor import FileProcessorService
 from app.db.mongodb import get_async_database
+from app.services.auth_service import get_current_user
+from app.models.user import UserResponse
 
 router = APIRouter()
 
@@ -14,9 +17,10 @@ router = APIRouter()
 @router.post("/upload")
 async def upload_file(
     file: UploadFile = File(...),
+    current_user: UserResponse = Depends(get_current_user),
 ):
     """
-    Endpoint para subir archivos vía CURL
+    Endpoint para subir archivos vía CURL con asociación al usuario
     """
     # Obtener el tamaño del archivo
     file_content = await file.read()
@@ -25,7 +29,7 @@ async def upload_file(
     
     
     processor = FileProcessorService()
-    result = await processor.process_file(file)
+    result = await processor.process_file(file, current_user.email)  # Pasar email del usuario
     
     if result['status'] == "error":
         error_message = result.get('message', 'Error desconocido durante el procesamiento')
@@ -52,27 +56,146 @@ async def upload_file(
         "total_genes": total_genes,
         "file_size": file_size,
         "filename": file.filename,
-        "processing_stats": result.get('stats', {})
+        "processing_stats": result.get('stats', {}),
+        "user_email": current_user.email
     }
 
 
 @router.get("/uploaded-files")
-async def get_uploaded_files():
+async def get_uploaded_files(
+    current_user: UserResponse = Depends(get_current_user),
+):
     """
-    Endpoint para consultar los nombres de los archivos en la colección 'upload_files'.
+    Endpoint para consultar los archivos del usuario actual.
     """
     database = get_async_database()
     upload_files_collection = database.uploaded_files
 
     try:
-        uploaded_files = await upload_files_collection.find().to_list(
-            length=100
-        )  # Limitar a 100 archivos
-        file_names = [
-            file["collection_name"] for file in uploaded_files
-        ]  # Obtener solo los nombres de los archivos
-        return file_names
+        # Filtrar archivos por usuario
+        uploaded_files = await upload_files_collection.find(
+            {"user_email": current_user.email}
+        ).to_list(length=100)  # Limitar a 100 archivos
+        
+        file_info = []
+        for file in uploaded_files:
+            file_info.append({
+                "collection_name": file["collection_name"],
+                "original_filename": file.get("original_filename", file["collection_name"]),
+                "upload_date": file.get("upload_date"),
+                "file_size": file.get("file_size"),
+                "total_genes": file.get("total_genes"),
+                "user_email": file.get("user_email")
+            })
+        
+        return file_info
     except Exception as e:
         raise HTTPException(
             status_code=500, detail=f"Error al consultar archivos subidos: {str(e)}"
+        )
+
+
+@router.delete("/delete-file/{collection_name}")
+async def delete_file(
+    collection_name: str,
+    current_user: UserResponse = Depends(get_current_user),
+):
+    """
+    Endpoint para eliminar un archivo específico del usuario.
+    """
+    database = get_async_database()
+    upload_files_collection = database.uploaded_files
+
+    try:
+        # Verificar que el archivo pertenece al usuario
+        file_record = await upload_files_collection.find_one({
+            "collection_name": collection_name,
+            "user_email": current_user.email
+        })
+        
+        if not file_record:
+            raise HTTPException(
+                status_code=404,
+                detail="Archivo no encontrado o no tienes permisos para eliminarlo"
+            )
+
+        # Eliminar la colección de datos genéticos
+        genes_collection = database[collection_name]
+        await genes_collection.drop()
+
+        # Eliminar el registro del archivo
+        await upload_files_collection.delete_one({
+            "collection_name": collection_name,
+            "user_email": current_user.email
+        })
+
+        return {
+            "message": f"Archivo {collection_name} eliminado exitosamente",
+            "deleted_collection": collection_name
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error al eliminar el archivo: {str(e)}"
+        )
+
+
+@router.delete("/delete-files")
+async def delete_multiple_files(
+    collection_names: List[str],
+    current_user: UserResponse = Depends(get_current_user),
+):
+    """
+    Endpoint para eliminar múltiples archivos del usuario.
+    """
+    database = get_async_database()
+    upload_files_collection = database.uploaded_files
+
+    try:
+        deleted_files = []
+        failed_files = []
+
+        for collection_name in collection_names:
+            try:
+                # Verificar que el archivo pertenece al usuario
+                file_record = await upload_files_collection.find_one({
+                    "collection_name": collection_name,
+                    "user_email": current_user.email
+                })
+                
+                if not file_record:
+                    failed_files.append({
+                        "collection_name": collection_name,
+                        "error": "Archivo no encontrado o sin permisos"
+                    })
+                    continue
+
+                # Eliminar la colección de datos genéticos
+                genes_collection = database[collection_name]
+                await genes_collection.drop()
+
+                # Eliminar el registro del archivo
+                await upload_files_collection.delete_one({
+                    "collection_name": collection_name,
+                    "user_email": current_user.email
+                })
+
+                deleted_files.append(collection_name)
+            except Exception as e:
+                failed_files.append({
+                    "collection_name": collection_name,
+                    "error": str(e)
+                })
+
+        return {
+            "message": f"Proceso completado. {len(deleted_files)} archivos eliminados",
+            "deleted_files": deleted_files,
+            "failed_files": failed_files
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error al eliminar archivos: {str(e)}"
         )
