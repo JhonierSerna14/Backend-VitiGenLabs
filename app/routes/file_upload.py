@@ -28,17 +28,31 @@ async def upload_file(
     result = await processor.process_file(file)
     
     if result['status'] == "error":
+        error_message = result.get('message', 'Error desconocido durante el procesamiento')
         raise HTTPException(
             status_code=500,
-            detail=f"Error al procesar el archivo: {result['message']}"
+            detail=f"Error al procesar el archivo: {error_message}"
         )
+
+    # Handle both old and new response formats
+    if 'data' in result:
+        # Old format compatibility
+        data = result['data']
+        total_genes = data.get('total_genes', 0)
+        file_path = str(data.get('file_path', ''))
+    else:
+        # New format
+        stats = result.get('stats', {})
+        total_genes = stats.get('total_genes', 0)
+        file_path = result.get('file_id', '')
 
     return {
         "message": "Archivo subido exitosamente",
-        "file_id": str(result['data']['file_path']),
-        "total_genes": result['data']['total_genes'],
+        "file_id": file_path,
+        "total_genes": total_genes,
         "file_size": file_size,
-        "filename": file.filename
+        "filename": file.filename,
+        "processing_stats": result.get('stats', {})
     }
 
 
