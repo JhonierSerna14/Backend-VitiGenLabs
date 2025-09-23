@@ -1,10 +1,40 @@
-"""
-MongoDB Database Connection Module
+from motor.motor_asyncio import AsyncIOMotorClient
+from pymongo import MongoClient
+from app.config import settings
 
-This module handles MongoDB connections for the VitiGenLabs backend application.
-It provides both synchronous and asynchronous database clients with proper
-connection management and error handling.
-"""
+
+# Cliente asíncrono para operaciones no bloqueantes
+class AsyncMongoDB:
+    client: AsyncIOMotorClient = None
+    db = None
+
+
+# Cliente síncrono para operaciones que lo requieran
+class SyncMongoDB:
+    client: MongoClient = None
+    db = None
+
+
+async def connect_to_mongo():
+    # Configuración para conexión asíncrona optimizada pero estable
+    AsyncMongoDB.client = AsyncIOMotorClient(
+        settings.MONGODB_URL,
+        maxPoolSize=50,  # Pool optimizado pero no excesivo
+        minPoolSize=10,   
+        maxIdleTimeMS=30000,  
+        serverSelectionTimeoutMS=5000,  
+        connectTimeoutMS=10000,
+        retryWrites=True
+    )
+    AsyncMongoDB.db = AsyncMongoDB.client[settings.MONGODB_DATABASE]
+
+async def close_mongo_connection():
+    AsyncMongoDB.client.close()
+    SyncMongoDB.client.close()
+
+
+def get_async_database():
+    return AsyncMongoDB.db
 
 import logging
 from typing import Optional
