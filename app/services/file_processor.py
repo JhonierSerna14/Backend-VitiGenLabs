@@ -1,6 +1,7 @@
 import os
 import logging
 import multiprocessing
+import asyncio
 from fastapi import UploadFile
 from datetime import datetime
 
@@ -28,16 +29,16 @@ class FileProcessorService:
         """
         try:
             await genes_collection.create_index(
-                [("chromosome", 1)], name="chromosome_index", background=True
+                [("chromosome", 1)], background=True
             )
             await genes_collection.create_index(
-                [("filter_status", 1)], name="filter_status_index", background=True
+                [("filter_status", 1)], background=True
             )
             await genes_collection.create_index(
-                [("info", 1)], name="info_index", background=True
+                [("info", 1)], background=True
             )
             await genes_collection.create_index(
-                [("format", 1)], name="format_index", background=True
+                [("format", 1)], background=True
             )
             logger.info("Índices creados para búsquedas parciales.")
         except Exception as e:
