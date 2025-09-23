@@ -312,13 +312,14 @@ class AuthService:
             if user.security_key_expires < datetime.now(tz=timezone.utc):
                 raise ValueError("Security key has expired")
 
-            # Mark user as verified and clear security key
+            # Mark user as verified permanently and clear security key
             result = await self.users_collection.update_one(
                 {"email": email},
                 {
                     "$set": {
                         "is_verified": True,
-                        "last_login": datetime.now(tz=timezone.utc)
+                        "last_login": datetime.now(tz=timezone.utc),
+                        "email_verified_at": datetime.now(tz=timezone.utc)
                     },
                     "$unset": {
                         "security_key": "",
